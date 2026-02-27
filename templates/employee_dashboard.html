@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Employee Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<div class="sidebar">
+    <h2>Employee Panel</h2>
+    <p>{{ session['username'] }}</p>
+    <a href="/employee_dashboard">Dashboard</a>
+    <a href="/logout">Logout</a>
+</div>
+
+<div class="main">
+
+    <div class="card">
+        <h3>All Complaints</h3>
+
+        <table>
+            <tr>
+                <th>ID</th>
+                <th>State</th>
+                <th>District</th>
+                <th>City</th>
+                <th>Issue</th>
+                <th>Severity</th>
+                <th>Priority</th>
+                <th>Status</th>
+                <th>Update</th>
+            </tr>
+
+            {% for c in complaints %}
+            <tr>
+                <td>{{ c[0] }}</td>
+                <td>{{ c[1] }}</td>
+                <td>{{ c[2] }}</td>
+                <td>{{ c[3] }}</td>
+                <td>{{ c[4] }}</td>
+                <td>{{ c[5] }}</td>
+                <td>{{ c[6] }}</td>
+                <td>{{ c[7] }}</td>
+
+                <td>
+                    <form method="post">
+                        <input type="hidden" name="complaint_id" value="{{ c[0] }}">
+                        <select name="new_status">
+                            <option value="Pending">Pending</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Resolved">Resolved</option>
+                        </select>
+                        <button type="submit">Update</button>
+                    </form>
+                </td>
+
+            </tr>
+            {% endfor %}
+        </table>
+
+    </div>
+
+</div>
+
+</body>
+</html>
