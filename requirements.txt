@@ -1,4 +1,5 @@
-Flask
-requests
-Pillow
-gunicorn
+Flask==2.3.2
+gunicorn==21.2.0
+Pillow==10.0.0
+numpy==1.26.4
+requests==2.31.0
