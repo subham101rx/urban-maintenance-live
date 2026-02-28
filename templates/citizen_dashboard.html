@@ -2,8 +2,10 @@
 <html>
 <head>
     <title>Citizen Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
+
 <body>
 
 <div class="sidebar">
@@ -15,14 +17,32 @@
 
 <div class="main">
 
-    <!-- Submit Complaint -->
+    <!-- ================= COMPLAINT FORM ================= -->
     <div class="card">
-        <h3>Submit Complaint (Upload Photo for Auto Location)</h3>
+        <h3>Submit Complaint</h3>
 
-        <form method="post" enctype="multipart/form-data">
+        <form method="POST" action="/citizen_dashboard" enctype="multipart/form-data">
 
-            <input type="file" name="image" accept="image/*" required>
+            <!-- Camera Capture -->
+            <label>📸 Take Photo</label>
+            <input type="file" name="image" accept="image/*" capture="environment" required>
 
+            <br><br>
+
+            <!-- Detect Location -->
+            <button type="button" class="location-btn" onclick="getLocation()">
+                📍 Detect Location
+            </button>
+
+            <p id="locationStatus" class="location-status"></p>
+
+            <input type="hidden" name="latitude" id="latitude">
+            <input type="hidden" name="longitude" id="longitude">
+
+            <br>
+
+            <!-- Issue Type -->
+            <label>Issue Type</label>
             <select name="issue_type" required>
                 <option value="">Select Issue</option>
                 <option value="Road">Road</option>
@@ -31,6 +51,10 @@
                 <option value="Sanitation">Sanitation</option>
             </select>
 
+            <br><br>
+
+            <!-- Severity -->
+            <label>Severity</label>
             <select name="severity" required>
                 <option value="">Select Severity</option>
                 <option value="Low">Low</option>
@@ -39,14 +63,20 @@
                 <option value="Critical">Critical</option>
             </select>
 
-            <input type="text" name="description" placeholder="Description" required>
+            <br><br>
 
-            <button type="submit">Submit Complaint</button>
+            <!-- Description -->
+            <label>Description</label>
+            <input type="text" name="description" placeholder="Describe the issue..." required>
+
+            <br><br>
+
+            <button type="submit" class="submit-btn">Submit Complaint</button>
 
         </form>
     </div>
 
-    <!-- Complaint History -->
+    <!-- ================= COMPLAINT HISTORY ================= -->
     <div class="card">
         <h3>Your Complaints</h3>
 
@@ -58,7 +88,6 @@
                 <th>City</th>
                 <th>Issue</th>
                 <th>Severity</th>
-                <th>Priority</th>
                 <th>Status</th>
                 <th>Image</th>
             </tr>
@@ -71,40 +100,47 @@
                 <td>{{ c[3] }}</td>
                 <td>{{ c[4] }}</td>
                 <td>{{ c[5] }}</td>
-                <td>
-                    {% if c[6] == "Critical" %}
-                        <span class="badge critical">Critical</span>
-                    {% elif c[6] == "High" %}
-                        <span class="badge high">High</span>
-                    {% else %}
-                        <span class="badge medium">{{ c[6] }}</span>
-                    {% endif %}
-                </td>
-                <td>
-                    {% if c[7] == "Resolved" %}
-                        <span class="badge status-resolved">Resolved</span>
-                    {% elif c[7] == "In Progress" %}
-                        <span class="badge status-inprogress">In Progress</span>
-                    {% else %}
-                        <span class="badge status-pending">Pending</span>
-                    {% endif %}
-                </td>
+                <td>{{ c[7] }}</td>
                 <td>
                     {% if c[8] %}
-                        <img src="{{ url_for('static', filename='uploads/' + c[8]) }}" 
-                             width="80" 
-                             style="border-radius:8px;">
+                        <img src="{{ url_for('static', filename='uploads/' + c[8]) }}" class="complaint-img">
                     {% else %}
                         No Image
                     {% endif %}
                 </td>
             </tr>
             {% endfor %}
-
         </table>
+
     </div>
 
 </div>
+
+<!-- ================= LOCATION SCRIPT ================= -->
+
+<script>
+function getLocation() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+
+            document.getElementById("latitude").value = position.coords.latitude;
+            document.getElementById("longitude").value = position.coords.longitude;
+
+            document.getElementById("locationStatus").innerText =
+                "Location detected successfully!";
+
+        }, function(error) {
+
+            document.getElementById("locationStatus").innerText =
+                "Location permission denied or unavailable.";
+
+        });
+    } else {
+        document.getElementById("locationStatus").innerText =
+            "Geolocation not supported by this browser.";
+    }
+}
+</script>
 
 </body>
 </html>
