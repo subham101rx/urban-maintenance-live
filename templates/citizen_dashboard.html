@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>UrbanAI Dashboard</title>
+    <title>Urban Maintenance Portal</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
@@ -9,50 +9,55 @@
 <body>
 
 <div class="sidebar">
-    <h2>UrbanAI</h2>
+    <h2>UrbanAI System</h2>
+    <p style="opacity:0.7; font-size:13px;">Citizen Portal</p>
     <a href="/citizen_dashboard">Dashboard</a>
     <a href="/logout">Logout</a>
 </div>
 
 <div class="main">
 
+    <!-- ================= SUBMIT SECTION ================= -->
     <div class="card">
-        <h3>Submit Complaint</h3>
+        <h3>Register a Civic Issue</h3>
+        <p style="margin-bottom:20px; opacity:0.8; font-size:14px;">
+            Submit your concern with supporting image and location details to ensure faster resolution.
+        </p>
 
         <form method="POST" enctype="multipart/form-data">
 
-            <label>Upload Photo</label>
+            <label>Upload Supporting Image</label>
             <input type="file" name="image" accept="image/*" capture="environment" required>
 
             <button type="button" class="location-btn" onclick="getLocation()">
-                Detect Location
+                Detect Current Location
             </button>
 
-            <p id="locationStatus"></p>
+            <p id="locationStatus" style="margin-top:8px; font-size:13px;"></p>
 
             <input type="hidden" name="latitude" id="latitude">
             <input type="hidden" name="longitude" id="longitude">
 
-            <label>Issue Type</label>
+            <label>Issue Category</label>
             <select name="issue_type" required>
-                <option value="">Select Issue</option>
-                <option value="Road">Road</option>
-                <option value="Drainage">Drainage</option>
-                <option value="Electrical">Electrical</option>
-                <option value="Sanitation">Sanitation</option>
+                <option value="">Select Category</option>
+                <option value="Road">Road Infrastructure</option>
+                <option value="Drainage">Drainage & Water Flow</option>
+                <option value="Electrical">Electrical & Lighting</option>
+                <option value="Sanitation">Sanitation & Cleanliness</option>
             </select>
 
-            <label>Severity</label>
+            <label>Issue Severity Level</label>
             <select name="severity" required>
                 <option value="">Select Severity</option>
-                <option value="Low">Low</option>
-                <option value="Medium">Medium</option>
-                <option value="High">High</option>
-                <option value="Critical">Critical</option>
+                <option value="Low">Low – Minor inconvenience</option>
+                <option value="Medium">Medium – Needs attention</option>
+                <option value="High">High – Urgent issue</option>
+                <option value="Critical">Critical – Immediate action required</option>
             </select>
 
-            <label>Description</label>
-            <input type="text" name="description" placeholder="Describe the issue..." required>
+            <label>Brief Description of the Issue</label>
+            <input type="text" name="description" placeholder="Provide a concise description..." required>
 
             <button type="submit" class="submit-btn">
                 Submit Complaint
@@ -61,14 +66,18 @@
         </form>
     </div>
 
+    <!-- ================= HISTORY SECTION ================= -->
     <div class="card">
-        <h3>Your Complaints</h3>
+        <h3>Complaint History</h3>
+        <p style="margin-bottom:20px; opacity:0.8; font-size:14px;">
+            Track the status and progress of previously submitted complaints.
+        </p>
 
         <table>
             <tr>
-                <th>ID</th>
+                <th>Complaint ID</th>
                 <th>Location</th>
-                <th>Issue</th>
+                <th>Category</th>
                 <th>Severity</th>
                 <th>Status</th>
                 <th>Image</th>
@@ -110,8 +119,12 @@ function getLocation() {
         navigator.geolocation.getCurrentPosition(function(position) {
             document.getElementById("latitude").value = position.coords.latitude;
             document.getElementById("longitude").value = position.coords.longitude;
-            document.getElementById("locationStatus").innerText = "Location detected!";
+            document.getElementById("locationStatus").innerText = "Location successfully detected.";
+        }, function() {
+            document.getElementById("locationStatus").innerText = "Unable to retrieve location.";
         });
+    } else {
+        document.getElementById("locationStatus").innerText = "Geolocation not supported.";
     }
 }
 </script>

@@ -1,11 +1,10 @@
-from flask import Flask, render_template, request, redirect, session
+from flask import Flask, render_template, request, redirect, session, jsonify
 import sqlite3
 import os
 from PIL import Image
 from PIL.ExifTags import TAGS, GPSTAGS
 import requests
-
-print("ACTIVE APP RUNNING")
+import numpy as np
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
@@ -55,12 +54,57 @@ def init_db():
 
 init_db()
 
+# ---------------- IMAGE AI ----------------
+def analyze_image(image_path):
+    try:
+        image = Image.open(image_path)
+        image = image.resize((200, 200))
+        pixels = np.array(image)
+        avg_color = pixels.mean(axis=(0, 1))
+        r, g, b = avg_color
+
+        if b > 130 and g > 120:
+            return "Drainage", "High"
+        elif r > 140 and g > 140 and b < 100:
+            return "Electrical", "Critical"
+        elif r < 80 and g < 80 and b < 80:
+            return "Road", "High"
+        else:
+            return None, None
+    except:
+        return None, None
+
+# ---------------- TEXT AI ----------------
+def analyze_text(description):
+    text = description.lower()
+
+    if any(word in text for word in ["flood", "overflow", "fire", "live wire", "collapsed"]):
+        severity = "Critical"
+    elif any(word in text for word in ["blocked", "danger", "broken", "damaged"]):
+        severity = "High"
+    elif any(word in text for word in ["minor", "slow", "leak"]):
+        severity = "Medium"
+    else:
+        severity = "Low"
+
+    if any(word in text for word in ["road", "pothole", "crack"]):
+        issue_type = "Road"
+    elif any(word in text for word in ["drain", "water", "flood"]):
+        issue_type = "Drainage"
+    elif any(word in text for word in ["light", "electric", "wire"]):
+        issue_type = "Electrical"
+    elif any(word in text for word in ["garbage", "waste", "dirty"]):
+        issue_type = "Sanitation"
+    else:
+        issue_type = "Sanitation"
+
+    return issue_type, severity
+
 # ---------------- GPS EXTRACTION ----------------
 def extract_gps(image_path):
     try:
         image = Image.open(image_path)
         exif_data = image._getexif()
-
         if not exif_data:
             return None
 
@@ -82,13 +126,10 @@ def extract_gps(image_path):
 
             lat = convert(gps_info["GPSLatitude"])
             lon = convert(gps_info["GPSLongitude"])
-
             return lat, lon
 
         return None
-
-    except Exception as e:
-        print("GPS ERROR:", e)
+    except:
         return None
 
 # ---------------- REVERSE GEOCODE ----------------
@@ -97,17 +138,12 @@ def reverse_geocode(lat, lon):
         url = f"https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lon}"
         response = requests.get(url, headers={"User-Agent": "urban-system"})
         data = response.json()
-
         address = data.get("address", {})
-
         state = address.get("state", "")
         district = address.get("county", "")
         city = address.get("city", address.get("town", address.get("village", "")))
-
         return state, district, city
-
-    except Exception as e:
-        print("GEOCODE ERROR:", e)
+    except:
         return "", "", ""
 
 # ---------------- HOME ----------------
@@ -121,18 +157,13 @@ def register():
     if request.method == "POST":
         conn = get_db()
         cursor = conn.cursor()
-
         cursor.execute(
             "INSERT INTO users (username, password, role) VALUES (?, ?, ?)",
-            (request.form["username"],
-             request.form["password"],
-             request.form["role"])
+            (request.form["username"], request.form["password"], request.form["role"])
         )
-
         conn.commit()
         conn.close()
         return redirect("/login")
-
     return render_template("register.html")
 
 # ---------------- LOGIN ----------------
@@ -141,13 +172,10 @@ def login():
     if request.method == "POST":
         conn = get_db()
         cursor = conn.cursor()
-
         cursor.execute(
             "SELECT * FROM users WHERE username=? AND password=?",
-            (request.form["username"],
-             request.form["password"])
+            (request.form["username"], request.form["password"])
         )
-
         user = cursor.fetchone()
         conn.close()
 
@@ -155,7 +183,6 @@ def login():
             session["user_id"] = user[0]
             session["username"] = user[1]
             session["role"] = user[3]
-
             if user[3] == "citizen":
                 return redirect("/citizen_dashboard")
             else:
@@ -175,7 +202,7 @@ def citizen_dashboard():
     if request.method == "POST":
 
         image_file = request.files.get("image")
-
+        description = request.form.get("description")
         latitude = request.form.get("latitude")
         longitude = request.form.get("longitude")
 
@@ -184,28 +211,29 @@ def citizen_dashboard():
         city = ""
         filename = ""
 
-        # ---------------- SAVE IMAGE ----------------
+        issue_type = None
+        severity = None
+
         if image_file and image_file.filename != "":
             filename = image_file.filename
             filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
             image_file.save(filepath)
 
-            # Try extracting GPS from image first
             gps = extract_gps(filepath)
-            print("IMAGE GPS:", gps)
 
             if gps:
                 state, district, city = reverse_geocode(gps[0], gps[1])
-                print("LOCATION FROM IMAGE:", state, district, city)
 
-        # ---------------- FALLBACK TO BROWSER LOCATION ----------------
-        if not state and latitude and longitude:
-            state, district, city = reverse_geocode(latitude, longitude)
-            print("LOCATION FROM BROWSER:", state, district, city)
+            if not state and latitude and longitude:
+                state, district, city = reverse_geocode(latitude, longitude)
 
-        issue_type = request.form.get("issue_type")
-        severity = request.form.get("severity")
-        description = request.form.get("description")
+            issue_type, severity = analyze_image(filepath)
+
+        if not issue_type:
+            if latitude and longitude and not state:
+                state, district, city = reverse_geocode(latitude, longitude)
+
+            issue_type, severity = analyze_text(description)
 
         department = issue_type + " Department"
         priority = severity
@@ -263,20 +291,53 @@ def employee_dashboard():
     if request.method == "POST":
         cursor.execute(
             "UPDATE complaints SET status=? WHERE id=?",
-            (request.form["new_status"],
-             request.form["complaint_id"])
+            (request.form["new_status"], request.form["complaint_id"])
         )
         conn.commit()
 
     cursor.execute("""
         SELECT id, state, district, city, issue_type, severity, priority, status, image
         FROM complaints
+        ORDER BY 
+            CASE severity
+                WHEN 'Critical' THEN 4
+                WHEN 'High' THEN 3
+                WHEN 'Medium' THEN 2
+                WHEN 'Low' THEN 1
+                ELSE 0
+            END DESC,
+            id DESC
     """)
 
     complaints = cursor.fetchall()
     conn.close()
 
     return render_template("employee_dashboard.html", complaints=complaints)
+
+# ---------------- LIVE API ----------------
+@app.route("/get_complaints")
+def get_complaints():
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT id, state, district, city, issue_type, severity, priority, status
+        FROM complaints
+        ORDER BY 
+            CASE severity
+                WHEN 'Critical' THEN 4
+                WHEN 'High' THEN 3
+                WHEN 'Medium' THEN 2
+                WHEN 'Low' THEN 1
+                ELSE 0
+            END DESC,
+            id DESC
+    """)
+
+    complaints = cursor.fetchall()
+    conn.close()
+
+    return jsonify(complaints)
 
 # ---------------- LOGOUT ----------------
 @app.route("/logout")
@@ -286,4 +347,4 @@ def logout():
 
 # ---------------- RUN ----------------
 if __name__ == "__main__":
-    app.run()
+    app.run(debug=True)

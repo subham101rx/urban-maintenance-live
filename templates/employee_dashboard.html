@@ -16,51 +16,82 @@
 <div class="main">
 
     <div class="card">
-        <h3>All Complaints</h3>
+        <h3>All Complaints (Live Priority Queue)</h3>
 
         <table>
-            <tr>
-                <th>ID</th>
-                <th>State</th>
-                <th>District</th>
-                <th>City</th>
-                <th>Issue</th>
-                <th>Severity</th>
-                <th>Priority</th>
-                <th>Status</th>
-                <th>Update</th>
-            </tr>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>State</th>
+                    <th>District</th>
+                    <th>City</th>
+                    <th>Issue</th>
+                    <th>Severity</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th>Update</th>
+                </tr>
+            </thead>
 
-            {% for c in complaints %}
-            <tr>
-                <td>{{ c[0] }}</td>
-                <td>{{ c[1] }}</td>
-                <td>{{ c[2] }}</td>
-                <td>{{ c[3] }}</td>
-                <td>{{ c[4] }}</td>
-                <td>{{ c[5] }}</td>
-                <td>{{ c[6] }}</td>
-                <td>{{ c[7] }}</td>
-
-                <td>
-                    <form method="post">
-                        <input type="hidden" name="complaint_id" value="{{ c[0] }}">
-                        <select name="new_status">
-                            <option value="Pending">Pending</option>
-                            <option value="In Progress">In Progress</option>
-                            <option value="Resolved">Resolved</option>
-                        </select>
-                        <button type="submit">Update</button>
-                    </form>
-                </td>
-
-            </tr>
-            {% endfor %}
+            <tbody id="complaintTableBody">
+                <!-- Data loads here dynamically -->
+            </tbody>
         </table>
 
     </div>
 
 </div>
+
+<script>
+function fetchComplaints() {
+    fetch('/get_complaints')
+    .then(response => response.json())
+    .then(data => {
+
+        let tableBody = document.getElementById("complaintTableBody");
+        tableBody.innerHTML = "";
+
+        data.forEach(c => {
+
+            let severityColor = "";
+            if (c[5] === "Critical") severityColor = "style='color:#ef4444;font-weight:bold;'";
+            else if (c[5] === "High") severityColor = "style='color:#f97316;font-weight:bold;'";
+            else if (c[5] === "Medium") severityColor = "style='color:#eab308;font-weight:bold;'";
+            else severityColor = "style='color:#22c55e;font-weight:bold;'";
+
+            let row = `
+                <tr>
+                    <td>${c[0]}</td>
+                    <td>${c[1]}</td>
+                    <td>${c[2]}</td>
+                    <td>${c[3]}</td>
+                    <td>${c[4]}</td>
+                    <td ${severityColor}>${c[5]}</td>
+                    <td>${c[6]}</td>
+                    <td>${c[7]}</td>
+                    <td>
+                        <form method="post">
+                            <input type="hidden" name="complaint_id" value="${c[0]}">
+                            <select name="new_status">
+                                <option value="Pending">Pending</option>
+                                <option value="In Progress">In Progress</option>
+                                <option value="Resolved">Resolved</option>
+                            </select>
+                            <button type="submit">Update</button>
+                        </form>
+                    </td>
+                </tr>
+            `;
+
+            tableBody.innerHTML += row;
+        });
+
+    });
+}
+
+fetchComplaints();
+setInterval(fetchComplaints, 5000);
+</script>
 
 </body>
 </html>
