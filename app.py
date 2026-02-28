@@ -3,8 +3,9 @@ import sqlite3
 import os
 from PIL import Image
 from PIL.ExifTags import TAGS, GPSTAGS
-import requests
-import numpy as np
+import requests 
+
+
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
@@ -59,9 +60,17 @@ def analyze_image(image_path):
     try:
         image = Image.open(image_path)
         image = image.resize((200, 200))
-        pixels = np.array(image)
-        avg_color = pixels.mean(axis=(0, 1))
-        r, g, b = avg_color
+        pixels = list(image.getdata())
+
+        total_pixels = len(pixels)
+
+        r_total = sum(p[0] for p in pixels)
+        g_total = sum(p[1] for p in pixels)
+        b_total = sum(p[2] for p in pixels)
+
+        r = r_total / total_pixels
+        g = g_total / total_pixels
+        b = b_total / total_pixels
 
         if b > 130 and g > 120:
             return "Drainage", "High"
@@ -71,6 +80,7 @@ def analyze_image(image_path):
             return "Road", "High"
         else:
             return None, None
+
     except:
         return None, None
 
